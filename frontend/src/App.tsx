@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
-import { createProject, fetchProjects, Project } from "./api";
+import { createProject, fetchProjects } from "./api";
+import type { Project } from "./api";
 
 function App() {
   const [projects, setProjects] = useState<Project[]>([]);
