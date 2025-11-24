@@ -6,6 +6,7 @@ import {
   createDocument,
   fetchDocument,
   updateDocument,
+  getDocumentHtmlUrl,
 } from "./api";
 import type { Project, Document, Block } from "./api";
 
@@ -154,6 +155,12 @@ function App() {
     } finally {
       setDocEditorLoading(false);
     }
+  };
+
+  const onPreviewHtml = () => {
+    if (!selectedProjectId || !selectedDocumentId) return;
+    const url = getDocumentHtmlUrl(selectedProjectId, selectedDocumentId);
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const onSaveDocument = async () => {
@@ -575,11 +582,17 @@ function App() {
                             docEditorLoading
                           }
                         >
-                          {docEditorLoading
-                            ? "Saving…"
-                            : "Save document"}
+                          {docEditorLoading ? "Saving…" : "Save document"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={onPreviewHtml}
+                          disabled={!selectedProjectId || !selectedDocumentId}
+                        >
+                          Preview HTML
                         </button>
                       </div>
+
                     </>
                   )}
                 </div>

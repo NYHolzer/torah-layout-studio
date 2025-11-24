@@ -126,3 +126,10 @@ export async function updateDocument(
   );
   return handleResponse<Document>(res);
 }
+
+export function getDocumentHtmlUrl(
+  projectId: string,
+  documentId: string
+): string {
+  return `${API_BASE_URL}/projects/${projectId}/documents/${documentId}/export/html`;
+}
