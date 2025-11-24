@@ -4,8 +4,10 @@ import {
   fetchProjects,
   fetchDocuments,
   createDocument,
+  fetchDocument,
+  updateDocument,
 } from "./api";
-import type { Project, Document } from "./api";
+import type { Project, Document, Block } from "./api";
 
 function App() {
   // Projects
@@ -27,6 +29,15 @@ function App() {
 
   const [newDocTitle, setNewDocTitle] = useState("");
   const [newDocDescription, setNewDocDescription] = useState("");
+
+  // Selected document for editing
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(
+    null
+  );
+  const [docEditorTitle, setDocEditorTitle] = useState("");
+  const [docEditorDescription, setDocEditorDescription] = useState("");
+  const [docBlocks, setDocBlocks] = useState<Block[]>([]);
+  const [docEditorLoading, setDocEditorLoading] = useState(false);
 
   // Load projects on mount
   useEffect(() => {
@@ -54,6 +65,10 @@ function App() {
     const loadDocs = async () => {
       if (!selectedProjectId) {
         setDocuments([]);
+        setSelectedDocumentId(null);
+        setDocEditorTitle("");
+        setDocEditorDescription("");
+        setDocBlocks([]);
         return;
       }
       try {
@@ -61,6 +76,16 @@ function App() {
         setError(null);
         const data = await fetchDocuments(selectedProjectId);
         setDocuments(data);
+        // If we had a selected document, but it's not in this project, clear it
+        if (
+          selectedDocumentId &&
+          !data.some((d) => d.id === selectedDocumentId)
+        ) {
+          setSelectedDocumentId(null);
+          setDocEditorTitle("");
+          setDocEditorDescription("");
+          setDocBlocks([]);
+        }
       } catch (err: any) {
         setError(err.message || "Failed to load documents");
       } finally {
@@ -68,7 +93,7 @@ function App() {
       }
     };
     loadDocs();
-  }, [selectedProjectId]);
+  }, [selectedProjectId, selectedDocumentId]);
 
   const onCreateProject = async (e: FormEvent) => {
     e.preventDefault();
@@ -92,7 +117,7 @@ function App() {
     }
   };
 
-    const onSelectProject = (projectId: string) => {
+  const onSelectProject = (projectId: string) => {
     setSelectedProjectId(projectId);
   };
 
@@ -113,6 +138,79 @@ function App() {
       setError(err.message || "Failed to create document");
     }
   };
+
+  const onSelectDocument = async (docId: string) => {
+    if (!selectedProjectId) return;
+    try {
+      setError(null);
+      setDocEditorLoading(true);
+      const doc = await fetchDocument(selectedProjectId, docId);
+      setSelectedDocumentId(docId);
+      setDocEditorTitle(doc.title);
+      setDocEditorDescription(doc.description || "");
+      setDocBlocks(doc.blocks || []);
+    } catch (err: any) {
+      setError(err.message || "Failed to load document");
+    } finally {
+      setDocEditorLoading(false);
+    }
+  };
+
+  const onSaveDocument = async () => {
+    if (!selectedProjectId || !selectedDocumentId) return;
+    if (!docEditorTitle.trim()) return;
+
+    try {
+      setError(null);
+      setDocEditorLoading(true);
+      const updated = await updateDocument(
+        selectedProjectId,
+        selectedDocumentId,
+        {
+          title: docEditorTitle.trim(),
+          description: docEditorDescription.trim() || undefined,
+          blocks: docBlocks,
+        }
+      );
+      // Update in documents list
+      setDocuments((prev) =>
+        prev.map((d) => (d.id === updated.id ? updated : d))
+      );
+    } catch (err: any) {
+      setError(err.message || "Failed to save document");
+    } finally {
+      setDocEditorLoading(false);
+    }
+  };
+
+  const addTextBlock = () => {
+    setDocBlocks((prev) => [
+      ...prev,
+      {
+        kind: "text",
+        role: "haggadah_main_hebrew",
+        text: "",
+      },
+    ]);
+  };
+
+  const addImageBlock = () => {
+    setDocBlocks((prev) => [
+      ...prev,
+      {
+        kind: "image",
+        role: "archaeology_fig",
+        src: "",
+        alt_text: "",
+        alignment: "block",
+      },
+    ]);
+  };
+
+  const removeBlock = (index: number) => {
+    setDocBlocks((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
   return (
@@ -174,7 +272,9 @@ function App() {
               Description (optional)
               <textarea
                 value={newProjectDescription}
-                onChange={(e) => setNewProjectDescription(e.target.value)}
+                onChange={(e) =>
+                  setNewProjectDescription(e.target.value)
+                }
                 placeholder="Main Haggadah project with commentary and archaeology sections."
               />
             </label>
@@ -184,7 +284,7 @@ function App() {
           </form>
         </section>
 
-        {/* Right: Documents for selected project */}
+        {/* Right: Documents + Editor */}
         <section className="panel panel-right">
           {selectedProject ? (
             <>
@@ -207,7 +307,15 @@ function App() {
 
               <ul className="document-list">
                 {documents.map((d) => (
-                  <li key={d.id} className="document-item">
+                  <li
+                    key={d.id}
+                    className={`document-item ${
+                      d.id === selectedDocumentId
+                        ? "document-item-selected"
+                        : ""
+                    }`}
+                    onClick={() => onSelectDocument(d.id)}
+                  >
                     <div className="document-title">{d.title}</div>
                     {d.description && (
                       <div className="document-description">
@@ -242,7 +350,9 @@ function App() {
                   Description (optional)
                   <textarea
                     value={newDocDescription}
-                    onChange={(e) => setNewDocDescription(e.target.value)}
+                    onChange={(e) =>
+                      setNewDocDescription(e.target.value)
+                    }
                     placeholder="Opening narrative of Yetziat Mitzrayim."
                   />
                 </label>
@@ -253,6 +363,231 @@ function App() {
                   Create document
                 </button>
               </form>
+
+              <div className="divider" />
+
+              <h3>Document editor</h3>
+              {selectedDocumentId ? (
+                <div className="block-editor">
+                  {docEditorLoading && (
+                    <p className="empty">Loading document…</p>
+                  )}
+
+                  {!docEditorLoading && (
+                    <>
+                      <div className="block-editor-header">
+                        <label>
+                          Title
+                          <input
+                            type="text"
+                            value={docEditorTitle}
+                            onChange={(e) =>
+                              setDocEditorTitle(e.target.value)
+                            }
+                            placeholder="Section title"
+                          />
+                        </label>
+                        <label>
+                          Description
+                          <textarea
+                            value={docEditorDescription}
+                            onChange={(e) =>
+                              setDocEditorDescription(e.target.value)
+                            }
+                            placeholder="Optional description for this section."
+                          />
+                        </label>
+                      </div>
+
+                      <div className="block-editor-list">
+                        {docBlocks.map((block, index) => (
+                          <div
+                            key={index}
+                            className="block-editor-item"
+                          >
+                            <div className="block-editor-item-header">
+                              <span>
+                                Block {index + 1} –{" "}
+                                {block.kind.toUpperCase()}
+                              </span>
+                              <button
+                                type="button"
+                                className="block-remove-button"
+                                onClick={() => removeBlock(index)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                            <label>
+                              Role
+                              <input
+                                type="text"
+                                value={block.role}
+                                onChange={(e) => {
+                                  const role = e.target.value;
+                                  setDocBlocks((prev) => {
+                                    const copy = [...prev];
+                                    copy[index] = {
+                                      ...copy[index],
+                                      role,
+                                    } as Block;
+                                    return copy;
+                                  });
+                                }}
+                                placeholder="e.g. haggadah_main_hebrew, commentary_en"
+                              />
+                            </label>
+
+                            {block.kind === "text" && "text" in block && (
+                              <label>
+                                Text
+                                <textarea
+                                  value={block.text}
+                                  onChange={(e) => {
+                                    const text = e.target.value;
+                                    setDocBlocks((prev) => {
+                                      const copy = [...prev];
+                                      const current = copy[index];
+                                      if (
+                                        current.kind === "text"
+                                      ) {
+                                        copy[index] = {
+                                          ...current,
+                                          text,
+                                        };
+                                      }
+                                      return copy;
+                                    });
+                                  }}
+                                  placeholder="Block text (Hebrew or English)"
+                                />
+                              </label>
+                            )}
+
+                            {block.kind === "image" && "src" in block && (
+                              <>
+                                <label>
+                                  Image URL / path
+                                  <input
+                                    type="text"
+                                    value={block.src}
+                                    onChange={(e) => {
+                                      const src = e.target.value;
+                                      setDocBlocks((prev) => {
+                                        const copy = [...prev];
+                                        const current = copy[index];
+                                        if (
+                                          current.kind === "image"
+                                        ) {
+                                          copy[index] = {
+                                            ...current,
+                                            src,
+                                          };
+                                        }
+                                        return copy;
+                                      });
+                                    }}
+                                    placeholder="/images/figure1.jpg"
+                                  />
+                                </label>
+                                <label>
+                                  Alt text / caption
+                                  <input
+                                    type="text"
+                                    value={block.alt_text || ""}
+                                    onChange={(e) => {
+                                      const alt_text = e.target.value;
+                                      setDocBlocks((prev) => {
+                                        const copy = [...prev];
+                                        const current = copy[index];
+                                        if (
+                                          current.kind === "image"
+                                        ) {
+                                          copy[index] = {
+                                            ...current,
+                                            alt_text,
+                                          };
+                                        }
+                                        return copy;
+                                      });
+                                    }}
+                                    placeholder="Short description for the figure"
+                                  />
+                                </label>
+                                <label>
+                                  Alignment
+                                  <select
+                                    value={block.alignment || "block"}
+                                    onChange={(e) => {
+                                      const alignment = e
+                                        .target
+                                        .value as Block["alignment"];
+                                      setDocBlocks((prev) => {
+                                        const copy = [...prev];
+                                        const current = copy[index];
+                                        if (
+                                          current.kind === "image"
+                                        ) {
+                                          copy[index] = {
+                                            ...current,
+                                            alignment,
+                                          };
+                                        }
+                                        return copy;
+                                      });
+                                    }}
+                                  >
+                                    <option value="block">
+                                      Block (full width)
+                                    </option>
+                                    <option value="left">Left</option>
+                                    <option value="right">Right</option>
+                                    <option value="inline">
+                                      Inline
+                                    </option>
+                                  </select>
+                                </label>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="block-editor-actions">
+                        <button
+                          type="button"
+                          onClick={addTextBlock}
+                        >
+                          Add text block
+                        </button>
+                        <button
+                          type="button"
+                          onClick={addImageBlock}
+                        >
+                          Add image block
+                        </button>
+                        <button
+                          type="button"
+                          onClick={onSaveDocument}
+                          disabled={
+                            !selectedDocumentId ||
+                            !docEditorTitle.trim() ||
+                            docEditorLoading
+                          }
+                        >
+                          {docEditorLoading
+                            ? "Saving…"
+                            : "Save document"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <p className="empty">
+                  Select a document above to edit its blocks.
+                </p>
+              )}
             </>
           ) : (
             <div>

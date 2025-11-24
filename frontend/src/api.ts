@@ -96,3 +96,33 @@ export async function createDocument(
   );
   return handleResponse<Document>(res);
 }
+
+export async function fetchDocument(
+  projectId: string,
+  documentId: string
+): Promise<Document> {
+  const res = await fetch(
+    `${API_BASE_URL}/projects/${projectId}/documents/${documentId}`
+  );
+  return handleResponse<Document>(res);
+}
+
+export async function updateDocument(
+  projectId: string,
+  documentId: string,
+  payload: {
+    title: string;
+    description?: string;
+    blocks: Block[];
+  }
+): Promise<Document> {
+  const res = await fetch(
+    `${API_BASE_URL}/projects/${projectId}/documents/${documentId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+  return handleResponse<Document>(res);
+}

@@ -222,3 +222,133 @@ body {
   font-size: 0.9rem;
   color: #6b7280;
 }
+
+/* Block editor */
+
+.block-editor {
+  margin-top: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  padding: 0.75rem 0.9rem;
+  background-color: #f9fafb;
+}
+
+.block-editor-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.block-editor-header label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+  gap: 0.25rem;
+}
+
+.block-editor-header input,
+.block-editor-header textarea {
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+}
+
+.block-editor-header textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.block-editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.block-editor-item {
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  padding: 0.6rem 0.7rem;
+  background-color: #ffffff;
+}
+
+.block-editor-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.block-editor-item label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  gap: 0.25rem;
+  margin-bottom: 0.4rem;
+}
+
+.block-editor-item input,
+.block-editor-item textarea,
+.block-editor-item select {
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  padding: 0.4rem 0.55rem;
+  font: inherit;
+}
+
+.block-editor-item textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.block-remove-button {
+  background: transparent;
+  border: none;
+  color: #b91c1c;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.block-editor-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.block-editor-actions button {
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: none;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.block-editor-actions button:nth-child(1) {
+  background-color: #111827;
+  color: white;
+}
+
+.block-editor-actions button:nth-child(2) {
+  background-color: #4b5563;
+  color: white;
+}
+
+.block-editor-actions button:nth-child(3) {
+  background-color: #2563eb;
+  color: white;
+}
+
+/* Selected document highlight */
+.document-item-selected {
+  border-color: #059669;
+  background-color: #ecfdf5;
+}
+
