@@ -3,7 +3,12 @@ from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, status
 
-from .schemas import Project, ProjectCreate
+from .schemas import (
+    Project,
+    ProjectCreate,
+    Document,
+    DocumentCreate,
+)
 from .storage import project_store, document_store
 
 app = FastAPI(title="Torah Layout Studio API")
