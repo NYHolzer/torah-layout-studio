@@ -2,6 +2,7 @@ from typing import List
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import HTMLResponse
 
 from .schemas import (
     Project,
@@ -10,6 +11,7 @@ from .schemas import (
     DocumentCreate,
 )
 from .storage import project_store, document_store
+from .layout import render_document_to_html
 
 app = FastAPI(title="Torah Layout Studio API")
 
@@ -120,3 +122,21 @@ def get_document(project_id: UUID, document_id: UUID) -> Document:
             detail="Document not found",
         )
     return doc
+
+@app.get(
+    "/projects/{project_id}/documents/{document_id}/export/html",
+    response_class=HTMLResponse,
+)
+def export_document_html(project_id: UUID, document_id: UUID) -> str:
+    """
+    Export a single document as HTML using the v0 layout renderer.
+    """
+    _ensure_project_exists(project_id)
+    doc = document_store.get_document(project_id, document_id)
+    if doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+    html = render_document_to_html(doc)
+    return html
