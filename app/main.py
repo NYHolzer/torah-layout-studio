@@ -2,6 +2,7 @@ from typing import List
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 from .schemas import (
@@ -14,6 +15,20 @@ from .storage import project_store, document_store
 from .layout import render_document_to_html
 
 app = FastAPI(title="Torah Layout Studio API")
+
+# --- CORS setup so the React dev server can call the API ---
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
 def read_health():
