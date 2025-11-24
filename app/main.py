@@ -138,6 +138,27 @@ def get_document(project_id: UUID, document_id: UUID) -> Document:
         )
     return doc
 
+@app.put(
+    "/projects/{project_id}/documents/{document_id}",
+    response_model=Document,
+)
+def update_document(
+    project_id: UUID,
+    document_id: UUID,
+    doc_in: DocumentCreate,
+) -> Document:
+    """
+    Replace a document's title/description/blocks in a given project.
+    """
+    _ensure_project_exists(project_id)
+    updated = document_store.update_document(project_id, document_id, doc_in)
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+    return updated
+
 @app.get(
     "/projects/{project_id}/documents/{document_id}/export/html",
     response_class=HTMLResponse,

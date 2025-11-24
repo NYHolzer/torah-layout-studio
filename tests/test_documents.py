@@ -149,3 +149,64 @@ def test_documents_for_unknown_project_404():
     create_resp = client.post(f"/projects/{unknown_project_id}/documents", json=payload)
     assert create_resp.status_code == 404
     assert create_resp.json()["detail"] == "Project not found"
+
+def test_update_document_success():
+    project_id = _create_sample_project()
+
+    # Create a document
+    create_payload = {
+        "title": "Original Title",
+        "description": "Original description",
+        "blocks": [
+            {
+                "kind": "text",
+                "role": "haggadah_main_hebrew",
+                "text": "הא לחמא עניא...",
+            }
+        ],
+    }
+    create_resp = client.post(f"/projects/{project_id}/documents", json=create_payload)
+    assert create_resp.status_code == 201
+    created = create_resp.json()
+    document_id = created["id"]
+
+    # Update it
+    update_payload = {
+        "title": "Updated Title",
+        "description": "Updated description",
+        "blocks": [
+            {
+                "kind": "text",
+                "role": "commentary_en",
+                "text": "Updated commentary block.",
+            }
+        ],
+    }
+    update_resp = client.put(
+        f"/projects/{project_id}/documents/{document_id}",
+        json=update_payload,
+    )
+    assert update_resp.status_code == 200
+    updated = update_resp.json()
+
+    assert updated["title"] == "Updated Title"
+    assert updated["description"] == "Updated description"
+    assert len(updated["blocks"]) == 1
+    assert updated["blocks"][0]["role"] == "commentary_en"
+
+
+def test_update_document_not_found_returns_404():
+    project_id = _create_sample_project()
+    unknown_doc_id = "00000000-0000-0000-0000-000000000000"
+
+    update_payload = {
+        "title": "Whatever",
+        "description": None,
+        "blocks": [],
+    }
+    resp = client.put(
+        f"/projects/{project_id}/documents/{unknown_doc_id}",
+        json=update_payload,
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Document not found"

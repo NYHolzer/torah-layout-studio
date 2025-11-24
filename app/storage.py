@@ -62,6 +62,27 @@ class InMemoryDocumentStore:
             if d.id == document_id and d.project_id == project_id:
                 return d
         return None
+    
+    def update_document(
+        self,
+        project_id: UUID,
+        document_id: UUID,
+        data: DocumentCreate,
+    ) -> Document | None:
+        """
+        Replace an existing document's title/description/blocks.
+        Returns the updated document or None if not found.
+        """
+        for idx, d in enumerate(self._documents):
+            if d.id == document_id and d.project_id == project_id:
+                updated = Document(
+                    id=d.id,
+                    project_id=project_id,
+                    **data.dict(),
+                )
+                self._documents[idx] = updated
+                return updated
+        return None
 
 # Single global store instance for now
 project_store = InMemoryProjectStore()
