@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from typing import Optional, List
-from sqlmodel import SQLModel, Field, Relationship, JSON
+from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, JSON
 import uuid
 
 from .schemas import Block  # pydantic union of TextBlock/ImageBlock
@@ -30,8 +31,11 @@ class DocumentModel(SQLModel, table=True):
     title: str
     description: Optional[str] = None
 
-    # Store blocks as JSON; we’ll convert to/from pydantic Block objects
-    blocks: Optional[list] = Field(default=None, sa_column=JSON)
+    # JSON column storing a list of block dicts
+    blocks: Optional[List[dict[str, Any]]] = Field(
+        default=None,
+        sa_column=Column(JSON, nullable=True),
+    )
 
     project: Optional[ProjectModel] = Relationship(back_populates="documents")
 
