@@ -44,6 +44,15 @@ body {
   padding: 1rem 1.5rem 1.5rem;
 }
 
+/* Page */
+.page {
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: #ffffff;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 0 0 1px #e5e7eb;
+}
+
 /* Panels */
 
 .panel {
@@ -290,6 +299,64 @@ body {
   min-height: 360px;
 }
 
+/* Editor Toolbar */
+.editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  gap: 1rem;
+}
+
+.editor-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.toolbar-label {
+  font-weight: 500;
+}
+
+.editor-toolbar select {
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+  background-color: #f9fafb;
+}
+
+.editor-toolbar-right {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.editor-toolbar-right button {
+  border-radius: 999px;
+  border: none;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.editor-toolbar-right button:nth-child(1) {
+  background-color: #111827;
+  color: #f9fafb;
+}
+
+.editor-toolbar-right button:nth-child(2) {
+  background-color: #4b5563;
+  color: #f9fafb;
+}
+
+.editor-toolbar-right button:nth-child(3) {
+  background-color: #2563eb;
+  color: #f9fafb;
+}
+
+
 /* Block editor */
 
 .block-editor-header {
@@ -369,6 +436,65 @@ body {
   min-height: 60px;
   resize: vertical;
 }
+
+/* Main Haggadah Hebrew – larger, RTL */
+.block-editor-item.role-haggadah_main_hebrew .block-textarea {
+  direction: rtl;
+  text-align: right;
+  font-size: 1.1rem;
+}
+
+/* Haggadah translation – regular LTR */
+.block-editor-item.role-haggadah_translation_en .block-textarea {
+  direction: ltr;
+  text-align: left;
+  font-size: 1rem;
+}
+
+/* Commentary EN – slightly smaller and maybe greyish */
+.block-editor-item.role-commentary_en .block-textarea {
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+/* Commentary HE – rtl, subtle */
+.block-editor-item.role-commentary_he .block-textarea {
+  direction: rtl;
+  text-align: right;
+  font-size: 0.95rem;
+}
+
+/* Footnotes – smaller text, tighter spacing */
+.block-editor-item.role-footnote_en .block-textarea,
+.block-editor-item.role-footnote_he .block-textarea {
+  font-size: 0.8rem;
+  line-height: 1.3;
+  color: #4b5563;
+}
+
+
+/* Block Text */
+.block-textarea {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  resize: vertical;
+  min-height: 40px;
+  font: inherit;
+  line-height: 1.6;
+}
+
+.block-textarea:focus {
+  outline: none;
+}
+
+.block-editor-item.block-active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+}
+
 
 /* Style row (role + custom) */
 

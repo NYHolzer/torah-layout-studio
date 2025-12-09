@@ -61,6 +61,7 @@ function App() {
   const [docEditorDescription, setDocEditorDescription] = useState("");
   const [docBlocks, setDocBlocks] = useState<Block[]>([]);
   const [docEditorLoading, setDocEditorLoading] = useState(false);
+  const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(null);
 
   // Load projects on mount
   useEffect(() => {
@@ -173,6 +174,7 @@ function App() {
       setDocEditorTitle(doc.title);
       setDocEditorDescription(doc.description || "");
       setDocBlocks(doc.blocks || []);
+      setActiveBlockIndex(null);
     } catch (err: any) {
       setError(err.message || "Failed to load document");
     } finally {
@@ -214,34 +216,62 @@ function App() {
   };
 
   const addTextBlock = () => {
-    setDocBlocks((prev) => [
-      ...prev,
-      {
-        kind: "text",
-        role: "haggadah_main_hebrew",
-        text: "",
-      },
-    ]);
+    setDocBlocks((prev) => {
+      const next = [
+        ...prev,
+        {
+          kind: "text",
+          role: "haggadah_main_hebrew",
+          text: "",
+        },
+      ];
+      setActiveBlockIndex(next.length - 1);
+      return next;
+    });
   };
 
+
   const addImageBlock = () => {
-    setDocBlocks((prev) => [
-      ...prev,
-      {
-        kind: "image",
-        role: "archaeology_fig",
-        src: "",
-        alt_text: "",
-        alignment: "block",
-      },
-    ]);
+    setDocBlocks((prev) => {
+      const next = [
+        ...prev,
+        {
+          kind: "image",
+          role: "archaeology_fig",
+          src: "",
+          alt_text: "",
+          alignment: "block",
+        },
+      ];
+      setActiveBlockIndex(next.length - 1);
+      return next;
+    });
   };
+
 
   const removeBlock = (index: number) => {
     setDocBlocks((prev) => prev.filter((_, i) => i !== index));
+    setActiveBlockIndex((current) => {
+      if (current == null) return null;
+      if (current === index) return null;
+      if (current > index) return current - 1;
+      return current;
+    });
   };
 
+
+  const currentBlock =
+  activeBlockIndex != null ? docBlocks[activeBlockIndex] : null;
+
+  const currentStyleOptions =
+    currentBlock?.kind === "image" ? IMAGE_STYLES : TEXT_STYLES;
+
+  const currentStyleId = currentBlock
+    ? currentStyleOptions.find((s) => s.id === currentBlock.role)?.id || "custom"
+    : "custom";
+
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
+
 
   return (
     <div className="app">
@@ -427,10 +457,67 @@ function App() {
               <div className="editor-shell">
                 {selectedDocumentId ? (
                   <div className="editor-card">
-                    {docEditorLoading ? (
-                      <p className="muted">Loading document…</p>
-                    ) : (
-                      <>
+                  {docEditorLoading ? (
+                    <p className="muted">Loading document…</p>
+                  ) : (
+                    <>
+                      {/* Toolbar */}
+                      <div className="editor-toolbar">
+                        <div className="editor-toolbar-left">
+                          <span className="toolbar-label">Style:</span>
+                          <select
+                            disabled={!currentBlock}
+                            value={currentStyleId}
+                            onChange={(e) => {
+                              const styleId = e.target.value;
+                              if (activeBlockIndex == null) return;
+                              setDocBlocks((prev) => {
+                                const copy = [...prev];
+                                const block = copy[activeBlockIndex];
+                                if (!block) return prev;
+                                let nextRole: string;
+                                if (styleId === "custom") {
+                                  nextRole = block.role || "";
+                                } else {
+                                  nextRole = styleId;
+                                }
+                                copy[activeBlockIndex] = {
+                                  ...block,
+                                  role: nextRole,
+                                } as Block;
+                                return copy;
+                              });
+                            }}
+                          >
+                            {currentStyleOptions.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.label}
+                              </option>
+                            ))}
+                            <option value="custom">Custom…</option>
+                          </select>
+                        </div>
+                        <div className="editor-toolbar-right">
+                          <button type="button" onClick={addTextBlock}>
+                            + Text block
+                          </button>
+                          <button type="button" onClick={addImageBlock}>
+                            + Image block
+                          </button>
+                          <button
+                            type="button"
+                            onClick={onSaveDocument}
+                            disabled={
+                              !selectedDocumentId || !docEditorTitle.trim() || docEditorLoading
+                            }
+                          >
+                            {docEditorLoading ? "Saving…" : "Save"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Page-like area */}
+                      <div className="page">
                         {/* Document title/description */}
                         <div className="block-editor-header">
                           <label>
@@ -438,9 +525,7 @@ function App() {
                             <input
                               type="text"
                               value={docEditorTitle}
-                              onChange={(e) =>
-                                setDocEditorTitle(e.target.value)
-                              }
+                              onChange={(e) => setDocEditorTitle(e.target.value)}
                               placeholder="Section title"
                             />
                           </label>
@@ -448,9 +533,7 @@ function App() {
                             Description
                             <textarea
                               value={docEditorDescription}
-                              onChange={(e) =>
-                                setDocEditorDescription(e.target.value)
-                              }
+                              onChange={(e) => setDocEditorDescription(e.target.value)}
                               placeholder="Optional description for this section."
                             />
                           </label>
@@ -461,112 +544,54 @@ function App() {
                           {docBlocks.map((block, index) => (
                             <div
                               key={index}
-                              className="block-editor-item"
+                              className={`block-editor-item role-${block.role || "default"} ${
+                                index === activeBlockIndex ? "block-active" : ""
+                              }`}
+                              onClick={() => setActiveBlockIndex(index)}
                             >
                               <div className="block-editor-item-header">
                                 <span>
-                                  Block {index + 1} –{" "}
-                                  {block.kind.toUpperCase()}
+                                  Block {index + 1} – {block.kind.toUpperCase()}
                                 </span>
                                 <button
                                   type="button"
                                   className="block-remove-button"
-                                  onClick={() => removeBlock(index)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeBlock(index);
+                                  }}
                                 >
                                   Remove
                                 </button>
                               </div>
 
-                              {/* Style (role) */}
-                              <label>
-                                Style
-                                <div className="style-row">
-                                  <select
-                                    value={
-                                      (block.kind === "text"
-                                        ? TEXT_STYLES.find(
-                                            (s) => s.id === block.role
-                                          )?.id
-                                        : IMAGE_STYLES.find(
-                                            (s) => s.id === block.role
-                                          )?.id) || "custom"
-                                    }
-                                    onChange={(e) => {
-                                      const styleId = e.target.value;
-                                      setDocBlocks((prev) => {
-                                        const copy = [...prev];
-                                        let nextRole: string;
-                                        if (styleId === "custom") {
-                                          nextRole =
-                                            copy[index].role || "";
-                                        } else {
-                                          nextRole = styleId;
-                                        }
-                                        copy[index] = {
-                                          ...copy[index],
-                                          role: nextRole,
-                                        } as Block;
-                                        return copy;
-                                      });
-                                    }}
-                                  >
-                                    {(block.kind === "text"
-                                      ? TEXT_STYLES
-                                      : IMAGE_STYLES
-                                    ).map((s) => (
-                                      <option key={s.id} value={s.id}>
-                                        {s.label}
-                                      </option>
-                                    ))}
-                                  </select>
-
-                                  <input
-                                    type="text"
-                                    value={block.role}
-                                    onChange={(e) => {
-                                      const role = e.target.value;
-                                      setDocBlocks((prev) => {
-                                        const copy = [...prev];
-                                        copy[index] = {
-                                          ...copy[index],
-                                          role,
-                                        } as Block;
-                                        return copy;
-                                      });
-                                    }}
-                                    placeholder="Custom style key (optional)"
-                                  />
-                                </div>
-                              </label>
-
                               {/* Text block */}
                               {block.kind === "text" && "text" in block && (
-                                <label>
-                                  Text
-                                  <textarea
-                                    value={block.text}
-                                    onChange={(e) => {
-                                      const text = e.target.value;
-                                      setDocBlocks((prev) => {
-                                        const copy = [...prev];
-                                        const current = copy[index];
-                                        if (current.kind === "text") {
-                                          copy[index] = {
-                                            ...current,
-                                            text,
-                                          };
-                                        }
-                                        return copy;
-                                      });
-                                    }}
-                                    placeholder="Block text (Hebrew or English)"
-                                  />
-                                </label>
+                                <textarea
+                                  className="block-textarea"
+                                  value={block.text}
+                                  onChange={(e) => {
+                                    const text = e.target.value;
+                                    setDocBlocks((prev) => {
+                                      const copy = [...prev];
+                                      const current = copy[index];
+                                      if (current.kind === "text") {
+                                        copy[index] = {
+                                          ...current,
+                                          text,
+                                        };
+                                      }
+                                      return copy;
+                                    });
+                                  }}
+                                  onFocus={() => setActiveBlockIndex(index)}
+                                  placeholder="Block text (Hebrew or English)"
+                                />
                               )}
 
                               {/* Image block */}
                               {block.kind === "image" && "src" in block && (
-                                <>
+                                <div className="image-block-fields">
                                   <label>
                                     Image URL / path
                                     <input
@@ -586,6 +611,7 @@ function App() {
                                           return copy;
                                         });
                                       }}
+                                      onFocus={() => setActiveBlockIndex(index)}
                                       placeholder="/images/figure1.jpg"
                                     />
                                   </label>
@@ -595,8 +621,7 @@ function App() {
                                       type="text"
                                       value={block.alt_text || ""}
                                       onChange={(e) => {
-                                        const alt_text =
-                                          e.target.value;
+                                        const alt_text = e.target.value;
                                         setDocBlocks((prev) => {
                                           const copy = [...prev];
                                           const current = copy[index];
@@ -609,75 +634,18 @@ function App() {
                                           return copy;
                                         });
                                       }}
+                                      onFocus={() => setActiveBlockIndex(index)}
                                       placeholder="Short description for the figure"
                                     />
                                   </label>
-                                  <label>
-                                    Alignment
-                                    <select
-                                      value={block.alignment || "block"}
-                                      onChange={(e) => {
-                                        const alignment = e.target
-                                          .value as Block["alignment"];
-                                        setDocBlocks((prev) => {
-                                          const copy = [...prev];
-                                          const current = copy[index];
-                                          if (current.kind === "image") {
-                                            copy[index] = {
-                                              ...current,
-                                              alignment,
-                                            };
-                                          }
-                                          return copy;
-                                        });
-                                      }}
-                                    >
-                                      <option value="block">
-                                        Block (full width)
-                                      </option>
-                                      <option value="left">Left</option>
-                                      <option value="right">Right</option>
-                                      <option value="inline">
-                                        Inline
-                                      </option>
-                                    </select>
-                                  </label>
-                                </>
+                                </div>
                               )}
                             </div>
                           ))}
                         </div>
-
-                        {/* Editor actions */}
-                        <div className="block-editor-actions">
-                          <button
-                            type="button"
-                            onClick={addTextBlock}
-                          >
-                            Add text block
-                          </button>
-                          <button
-                            type="button"
-                            onClick={addImageBlock}
-                          >
-                            Add image block
-                          </button>
-                          <button
-                            type="button"
-                            onClick={onSaveDocument}
-                            disabled={
-                              !selectedDocumentId ||
-                              !docEditorTitle.trim() ||
-                              docEditorLoading
-                            }
-                          >
-                            {docEditorLoading
-                              ? "Saving…"
-                              : "Save document"}
-                          </button>
-                        </div>
-                      </>
-                    )}
+                      </div>
+                    </>
+                  )}
                   </div>
                 ) : (
                   <div className="empty-state">
