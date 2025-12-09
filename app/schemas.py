@@ -60,7 +60,8 @@ class BlockBase(BaseModel):
 
 class TextBlock(BlockBase):
     kind: Literal["text"] = "text"
-    text: str = Field(..., min_length=1)
+    text: str = ""
+
 
 class ImageBlock(BlockBase):
     kind: Literal["image"] = "image"
