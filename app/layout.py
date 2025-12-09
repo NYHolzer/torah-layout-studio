@@ -1,125 +1,174 @@
+from __future__ import annotations
+
 from html import escape
 from typing import List
 
 from .schemas import Document, TextBlock, ImageBlock, Block
 
 
+BASE_CSS = """
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background-color: #f3f4f6;
+    color: #111827;
+}
+.page {
+    max-width: 800px;
+    margin: 1.5rem auto;
+    background-color: #ffffff;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 0 0 1px #e5e7eb;
+}
+.page-header-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+.page-header-description {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+    color: #4b5563;
+}
+.block {
+    margin-bottom: 0.75rem;
+}
+.block p {
+    margin: 0;
+}
+
+/* Role-based styles – mirror frontend */
+
+.block.role-haggadah_main_hebrew p {
+    direction: rtl;
+    text-align: right;
+    font-size: 1.1rem;
+    line-height: 1.7;
+}
+
+.block.role-haggadah_translation_en p {
+    direction: ltr;
+    text-align: left;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.block.role-commentary_en p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #374151;
+}
+
+.block.role-commentary_he p {
+    direction: rtl;
+    text-align: right;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.block.role-footnote_en p,
+.block.role-footnote_he p {
+    font-size: 0.8rem;
+    line-height: 1.3;
+    color: #4b5563;
+}
+
+/* Images */
+
+.figure {
+    margin: 0.5rem 0 0.75rem;
+    text-align: center;
+}
+
+.figure img {
+    max-width: 100%;
+    height: auto;
+}
+
+.figure figcaption {
+    font-size: 0.8rem;
+    color: #4b5563;
+    margin-top: 0.25rem;
+}
+
+/* Simple alignment hooks */
+
+.figure.align-left {
+    text-align: left;
+}
+
+.figure.align-right {
+    text-align: right;
+}
+"""
+
+
 def _render_text_block(block: TextBlock) -> str:
-    """
-    Render a text block as a <div> with a CSS class based on its role.
-    For now we keep it simple and let CSS handle styling later.
-    """
-    role_class = f"block-role-{escape(block.role)}"
-    text_html = escape(block.text)
-    return f'<div class="block block-text {role_class}">{text_html}</div>'
+    role_class = f"role-{escape(block.role)}" if block.role else "role-default"
+    text = escape(block.text or "")
+    if not text:
+        return ""
+    return f'<div class="block {role_class}"><p>{text}</p></div>'
 
 
 def _render_image_block(block: ImageBlock) -> str:
-    """
-    Render an image block as a <figure> with optional caption (alt_text).
-    """
-    role_class = f"block-role-{escape(block.role)}"
-    src = escape(block.src)
-    alt = escape(block.alt_text) if block.alt_text else ""
-    alignment_class = f"align-{block.alignment}" if block.alignment else ""
-    caption_html = (
-        f"<figcaption>{alt}</figcaption>" if block.alt_text else ""
-    )
+    role_class = f"role-{escape(block.role)}" if block.role else "role-default"
+    src = escape(block.src or "")
+    if not src:
+        return ""
+
+    alt = escape(block.alt_text or "")
+    alignment = block.alignment or "block"
+    align_class = ""
+    if alignment in ("left", "right"):
+        align_class = f"align-{alignment}"
+
     return (
-        f'<figure class="block block-image {role_class} {alignment_class}">'
-        f'<img src="{src}" alt="{alt}" />'
-        f"{caption_html}"
-        f"</figure>"
+        f'<figure class="block figure {role_class} {align_class}">'
+        f'<img src="{src}" alt="{alt}"/>'
+        + (f"<figcaption>{alt}</figcaption>" if alt else "")
+        + "</figure>"
     )
 
 
-def _render_block(block: Block) -> str:
+def render_document_to_html(doc: Document) -> str:
     """
-    Dispatch rendering based on block kind.
+    Render a single Document into standalone HTML.
+    This is a v0 layout: linear blocks with role-based styling.
     """
-    if isinstance(block, TextBlock):
-        return _render_text_block(block)
-    if isinstance(block, ImageBlock):
-        return _render_image_block(block)
-    # In case we add more kinds in the future
-    raise ValueError(f"Unsupported block kind: {block}")
+    pieces: List[str] = []
 
+    # Basic HTML + CSS
+    pieces.append("<!DOCTYPE html>")
+    pieces.append("<html lang='en'>")
+    pieces.append("<head>")
+    pieces.append("<meta charset='utf-8'/>")
+    title = escape(doc.title or "Document")
+    pieces.append(f"<title>{title}</title>")
+    pieces.append("<style>")
+    pieces.append(BASE_CSS)
+    pieces.append("</style>")
+    pieces.append("</head>")
+    pieces.append("<body>")
 
-def render_document_to_html(document: Document) -> str:
-    """
-    Render a single Document into a basic HTML string.
+    # Page wrapper
+    pieces.append('<div class="page">')
 
-    This is our v0 'layout engine':
-    - Wraps everything in a <html><body>
-    - Renders blocks in order
-    - Adds minimal structure for later CSS-based layout
-    """
-    block_html_parts: List[str] = []
+    # Header
+    pieces.append(f'<h1 class="page-header-title">{title}</h1>')
+    if doc.description:
+        pieces.append(
+            f'<p class="page-header-description">{escape(doc.description)}</p>'
+        )
 
-    for block in document.blocks:
-        block_html_parts.append(_render_block(block))
+    # Blocks
+    for block in doc.blocks:
+        if isinstance(block, TextBlock) or block.kind == "text":
+            pieces.append(_render_text_block(block))  # type: ignore[arg-type]
+        elif isinstance(block, ImageBlock) or block.kind == "image":
+            pieces.append(_render_image_block(block))  # type: ignore[arg-type]
 
-    blocks_html = "\n".join(block_html_parts)
-    title = escape(document.title)
+    pieces.append("</div>")  # .page
+    pieces.append("</body></html>")
 
-    html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <title>{title}</title>
-    <style>
-        /* Minimal baseline styles, we will refine later */
-
-        body {{
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            margin: 1in;
-        }}
-
-        .document-title {{
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
-        }}
-
-        .block {{
-            margin-bottom: 0.5rem;
-        }}
-
-        .block-role-haggadah_main_hebrew {{
-            font-size: 1.3rem;
-        }}
-
-        .block-role-commentary_en {{
-            font-size: 0.95rem;
-        }}
-
-        .block-role-archaeology_fig {{
-            border: 1px solid #ccc;
-            padding: 0.5rem;
-            background-color: #f9f9f9;
-        }}
-
-        .block-image img {{
-            max-width: 100%;
-            height: auto;
-        }}
-
-        .align-left {{
-            float: left;
-            margin-right: 0.5rem;
-        }}
-
-        .align-right {{
-            float: right;
-            margin-left: 0.5rem;
-        }}
-    </style>
-</head>
-<body>
-    <div class="document">
-        <div class="document-title">{title}</div>
-        {blocks_html}
-    </div>
-</body>
-</html>"""
-    return html
+    return "".join(pieces)
